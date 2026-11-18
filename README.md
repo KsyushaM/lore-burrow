@@ -5,8 +5,10 @@ and open questions. Built with SvelteKit, Svelte 5, TypeScript, and Vite.
 
 The home page displays a responsive discussion feed backed by local sample data.
 Posts show their community, author, excerpt, and tags, with a save toggle. Saves
-currently live in component state and reset on refresh. There is no backend or
-saved-posts page yet; the “Saved theories” navigation link is a placeholder.
+live in a layout-scoped store and persist while switching between “Discover” at
+`/` and “Saved posts” at `/saved`. The saved view filters out unsaved posts
+immediately and shows an empty state when none remain. Saves reset on refresh;
+there is no backend or browser-storage persistence yet.
 
 ## Development
 
@@ -23,14 +25,19 @@ npm run dev
 src/
   app.css                    Shared colors, fonts, and base styles
   routes/
-    +layout.svelte           Loads global styles
-    +page.svelte             Home page layout and feed
+    +layout.svelte           Shared layout, navigation, styles, and saved state
+    +page.svelte             All-posts view
+    saved/+page.svelte       Saved-posts view
   lib/
     posts.ts                 Post types and SAMPLE_LORE_POSTS
+    saved-posts.ts           Layout-scoped saved IDs and toggle callback
     components/
       SiteHeader.svelte      Site wordmark
+      SiteSidebar.svelte     Discover and Saved posts navigation
       PostFeed.svelte        Renders posts keyed by ID
-      PostCard.svelte        Post details, tags, and local save state
+      FeedView.svelte        Filters posts for the current view
+      PostCard.svelte        Post details, tags, and controlled save button
+      SaveButton.svelte      Ghost icon button with optional controlled state
       card/                  Reusable card components
       button/                Button component, variants, and styles
 static/                      Public assets
@@ -50,10 +57,23 @@ has a unique `id`, `community`, `title`, `excerpt`, `author`, `initials`,
 <script lang="ts">
 	import PostFeed from '#lib/components/PostFeed.svelte';
 	import { SAMPLE_LORE_POSTS } from '#lib/posts.ts';
+
+	let savedIds = $state<string[]>([]);
+
+	function toggleSave(postId: string) {
+		savedIds = savedIds.includes(postId)
+			? savedIds.filter((id) => id !== postId)
+			: [...savedIds, postId];
+	}
 </script>
 
-<PostFeed posts={SAMPLE_LORE_POSTS} />
+<PostFeed posts={SAMPLE_LORE_POSTS} {savedIds} onToggleSave={toggleSave} />
 ```
+
+The example above owns `savedIds` locally. In the application, the shared layout
+provides a saved-posts store through Svelte context, and `FeedView` reads it for
+both routes. `PostFeed` passes each card an `isSaved` boolean and `onToggleSave`
+callback; `PostCard` calls that callback with the post ID when clicked.
 
 ## Design system
 
@@ -91,6 +111,13 @@ The button module also exports `buttonVariants`, `ButtonVariant`, and `ButtonSiz
 `buttonVariants` returns a Svelte-compatible class value; its CSS is loaded by
 `Button.svelte`. When using the helper without the component, also import
 `#lib/components/button/button.css`.
+
+`SaveButton.svelte` uses the `ghost` variant and `icon` size in both states, with
+an outline bookmark when unsaved and a filled bookmark when saved. Pass `saved`
+and `onSavedChange` to control it from a parent, or omit `saved` for internal state.
+An `onclick` handler can cancel the toggle with `event.preventDefault()`.
+The component provides `aria-pressed`, a default accessible label, and native
+`disabled` behavior. In the feed, its label includes the post title.
 
 ## Checks
 

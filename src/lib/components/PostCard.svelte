@@ -1,10 +1,15 @@
 <script lang="ts">
 	import type { LorePost } from '#lib/posts.ts';
 	import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './card';
-	import { Button } from './button';
+	import SaveButton from './SaveButton.svelte';
 
-	let { post }: { post: LorePost } = $props();
-	let isSaved = $state(false);
+	type Props = {
+		post: LorePost;
+		isSaved: boolean;
+		onToggleSave: (postId: string) => void;
+	};
+
+	let { post, isSaved, onToggleSave }: Props = $props();
 </script>
 
 <article class="post" aria-labelledby={`post-title-${post.id}`}>
@@ -33,19 +38,11 @@
 			</ul>
 		</CardContent>
 		<CardFooter class="post-footer">
-			<Button
-				type="button"
-				variant={isSaved ? 'secondary' : 'ghost'}
-				size="sm"
+			<SaveButton
+				saved={isSaved}
 				aria-label={isSaved ? `Unsave ${post.title}` : `Save ${post.title} for later`}
-				aria-pressed={isSaved}
-				onclick={() => (isSaved = !isSaved)}
-			>
-				<svg aria-hidden="true" viewBox="0 0 24 24" class:saved={isSaved}>
-					<path d="M6 3h12v18l-6-4-6 4Z" />
-				</svg>
-				<span>{isSaved ? 'Saved' : 'Save'}</span>
-			</Button>
+				onSavedChange={() => onToggleSave(post.id)}
+			/>
 		</CardFooter>
 	</Card>
 </article>
@@ -160,9 +157,6 @@
 	}
 	.sparkles {
 		color: var(--color-primary);
-	}
-	.saved {
-		fill: currentColor;
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.post :global(.post-card) {
